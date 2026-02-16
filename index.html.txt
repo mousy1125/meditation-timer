@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meditation Timer</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Outfit', sans-serif; }
+    
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.05); opacity: 0.4; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+    
+    @keyframes shimmer {
+      0% { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
+    
+    .pulse-ring {
+      animation: pulse-ring 4s ease-in-out infinite;
+    }
+    
+    .breathe {
+      animation: breathe 6s ease-in-out infinite;
+    }
+    
+    .float {
+      animation: float 3s ease-in-out infinite;
+    }
+    
+    .timer-glow {
+      text-shadow: 0 0 60px rgba(255, 255, 255, 0.6), 0 0 120px rgba(255, 255, 255, 0.3);
+    }
+    
+    .glass-card {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .progress-ring {
+      transition: stroke-dashoffset 1s linear;
+    }
+    
+    .btn-glow {
+      box-shadow: 0 0 30px rgba(255, 255, 255, 0.4), 0 0 60px rgba(255, 255, 255, 0.2);
+    }
+    
+    .btn-glow:hover {
+      box-shadow: 0 0 40px rgba(255, 255, 255, 0.6), 0 0 80px rgba(255, 255, 255, 0.3);
+    }
+    
+    .complete-shimmer {
+      background: linear-gradient(90deg, #ffffff 0%, #f0f0f0 50%, #ffffff 100%);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s linear infinite;
+    }
+    
+    .sound-button {
+      transition: all 0.3s ease;
+    }
+    
+    .sound-button.active {
+      background: rgba(255, 255, 255, 0.3) !important;
+      border-color: rgba(255, 255, 255, 0.5) !important;
+    }
+    
+    .volume-slider {
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(255, 255, 255, 0.2);
+      outline: none;
+      -webkit-appearance: none;
+    }
+    
+    .volume-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: white;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    }
+    
+    .volume-slider::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: white;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    }
+  </style>
+</head>
+<body class="h-full m-0 overflow-auto">
+  <main id="app-wrapper" class="min-h-full w-full flex items-center justify-center p-6" style="background: #87CEEB;">
+    
+    <!-- Ambient floating orbs -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none">
+      <div class="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-white/5 blur-3xl float" style="animation-delay: 0s;"></div>
+      <div class="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-white/5 blur-3xl float" style="animation-delay: 1.5s;"></div>
+      <div class="absolute top-1/2 right-1/3 w-48 h-48 rounded-full bg-white/5 blur-3xl float" style="animation-delay: 0.8s;"></div>
+    </div>
+
+    <!-- Sound Control Panel (Left) -->
+    <div class="fixed left-6 top-1/2 -translate-y-1/2 z-20">
+      <div class="glass-card p-6 rounded-2xl w-48">
+        <h2 class="text-white text-sm font-semibold tracking-wider uppercase mb-4">Ambient Sounds</h2>
+        
+        <!-- Brown Noise -->
+        <div class="mb-6">
+          <button 
+            id="brown-btn"
+            class="sound-button w-full px-4 py-3 rounded-lg glass-card text-white text-sm font-medium tracking-wider uppercase mb-2 hover:bg-white/20 transition-all"
+          >
+            🌊 Brown Noise
+          </button>
+          <div class="px-2">
+            <input 
+              type="range" 
+              id="brown-volume" 
+              class="volume-slider" 
+              min="0" 
+              max="100" 
+              value="0"
+              aria-label="Brown noise volume"
+            >
+            <p class="text-white/50 text-xs mt-2 text-center">Vol: <span id="brown-vol-display">0</span>%</p>
+          </div>
+        </div>
+        
+        <!-- Pink Noise -->
+        <div>
+          <button 
+            id="pink-btn"
+            class="sound-button w-full px-4 py-3 rounded-lg glass-card text-white text-sm font-medium tracking-wider uppercase mb-2 hover:bg-white/20 transition-all"
+          >
+            🌸 Pink Noise
+          </button>
+          <div class="px-2">
+            <input 
+              type="range" 
+              id="pink-volume" 
+              class="volume-slider" 
+              min="0" 
+              max="100" 
+              value="0"
+              aria-label="Pink noise volume"
+            >
+            <p class="text-white/50 text-xs mt-2 text-center">Vol: <span id="pink-vol-display">0</span>%</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Timer Content -->
+    <div class="relative z-10 text-center max-w-lg w-full">
+      
+      <!-- Title -->
+      <h1 id="timer-title" class="text-white text-2xl md:text-3xl font-light tracking-widest uppercase mb-12 breathe">
+        Meditation Timer
+      </h1>
+
+      <!-- Timer Display Container -->
+      <div class="relative mx-auto w-72 h-72 md:w-80 md:h-80 mb-12">
+        
+        <!-- Pulsing outer rings -->
+        <div class="absolute inset-0 rounded-full border border-white/30 pulse-ring"></div>
+        <div class="absolute inset-4 rounded-full border border-white/20 pulse-ring" style="animation-delay: 0.5s;"></div>
+        <div class="absolute inset-8 rounded-full border border-white/10 pulse-ring" style="animation-delay: 1s;"></div>
+        
+        <!-- Progress ring SVG -->
+        <svg class="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
+          <circle 
+            cx="50" cy="50" r="45" 
+            fill="none" 
+            stroke="rgba(255, 255, 255, 0.2)" 
+            stroke-width="2"
+          />
+          <circle 
+            id="progress-ring"
+            class="progress-ring"
+            cx="50" cy="50" r="45" 
+            fill="none" 
+            stroke="url(#gradient)" 
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-dasharray="282.74"
+            stroke-dashoffset="0"
+          />
+          <defs>
+            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#ffffff" />
+              <stop offset="50%" stop-color="#f5f5f5" />
+              <stop offset="100%" stop-color="#ffffff" />
+            </linearGradient>
+          </defs>
+        </svg>
+        
+        <!-- Glass card center -->
+        <div class="absolute inset-12 rounded-full glass-card flex flex-col items-center justify-center">
+          <div id="time-display" class="text-white text-5xl md:text-6xl font-extralight tracking-tight timer-glow">
+            15:00
+          </div>
+          <div id="time-label" class="text-white/70 text-sm font-light tracking-widest uppercase mt-2">
+            minutes
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div id="controls" class="flex flex-col items-center gap-6">
+        
+        <!-- Time adjustment (shown when not running) -->
+        <div id="time-adjust" class="flex items-center gap-6 mb-4">
+          <button 
+            id="decrease-btn"
+            class="w-12 h-12 rounded-full glass-card text-white/80 hover:text-white hover:bg-white/20 transition-all duration-300 flex items-center justify-center text-2xl font-light"
+            aria-label="Decrease time by 5 minutes"
+          >
+            −
+          </button>
+          <span class="text-white/70 text-sm tracking-wider">5 MIN</span>
+          <button 
+            id="increase-btn"
+            class="w-12 h-12 rounded-full glass-card text-white/80 hover:text-white hover:bg-white/20 transition-all duration-300 flex items-center justify-center text-2xl font-light"
+            aria-label="Increase time by 5 minutes"
+          >
+            +
+          </button>
+        </div>
+
+        <!-- Main action button -->
+        <button 
+          id="start-btn"
+          class="px-12 py-4 rounded-full bg-white text-sky-500 text-lg font-medium tracking-wider uppercase btn-glow hover:bg-gray-100 transition-all duration-500 transform hover:scale-105"
+        >
+          Begin Session
+        </button>
+
+        <!-- Secondary controls (shown when running) -->
+        <div id="running-controls" class="hidden flex-wrap justify-center gap-4">
+          <button 
+            id="pause-btn"
+            class="px-8 py-3 rounded-full glass-card text-white/95 hover:bg-white/20 transition-all duration-300 tracking-wider"
+          >
+            Pause
+          </button>
+          <button 
+            id="reset-btn"
+            class="px-8 py-3 rounded-full glass-card text-white/70 hover:text-white hover:bg-white/15 transition-all duration-300 tracking-wider"
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+
+      <!-- Completion message (hidden by default) -->
+      <div id="complete-container" class="hidden">
+        <div id="complete-message" class="complete-shimmer text-4xl md:text-5xl font-light tracking-wide mb-8">
+          Session Complete
+        </div>
+        <p class="text-white/80 text-lg font-light mb-8">Take a moment to return gently.</p>
+        <button 
+          id="restart-btn"
+          class="px-10 py-3 rounded-full glass-card text-white/90 hover:bg-white/20 transition-all duration-300 tracking-wider"
+        >
+          New Session
+        </button>
+      </div>
+
+      <!-- Subtle hint -->
+      <p id="hint-text" class="text-white/60 text-xs tracking-wider mt-12 font-light">
+        Find your breath. Find your peace.
+      </p>
+
+    </div>
+  </main>
+
+  <script>
+    const defaultConfig = {
+      timer_title: 'Meditation Timer',
+      start_text: 'Begin Session',
+      complete_message: 'Session Complete',
+      background_color: '#87CEEB',
+      accent_color: '#ffffff',
+      text_color: '#ffffff',
+      surface_color: 'rgba(255, 255, 255, 0.15)',
+      button_color: '#ffffff',
+      font_family: 'Outfit',
+      font_size: 16
+    };
+
+    // Web Audio API for noise generation
+    let audioContext = null;
+    let brownNoiseProcessor = null;
+    let brownNoiseGain = null;
+    let pinkNoiseProcessor = null;
+    let pinkNoiseGain = null;
+    let brownNoiseActive = false;
+    let pinkNoiseActive = false;
+
+    function initAudio() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function generateBrownNoise(volume) {
+      initAudio();
+      
+      if (volume === 0) {
+        stopBrownNoise();
+        return;
+      }
+      
+      // If already running, just update volume
+      if (brownNoiseActive) {
+        brownNoiseGain.gain.value = volume / 100;
+        return;
+      }
+      
+      brownNoiseActive = true;
+      brownNoiseGain = audioContext.createGain();
+      brownNoiseGain.gain.value = volume / 100;
+      brownNoiseGain.connect(audioContext.destination);
+      
+      const bufferSize = 4096;
+      let lastOut = 0.0;
+      brownNoiseProcessor = audioContext.createScriptProcessor(bufferSize, 1, 1);
+      
+      brownNoiseProcessor.onaudioprocess = function(event) {
+        const output = event.outputBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          output[i] = (lastOut + (0.02 * white)) / 1.02;
+          lastOut = output[i];
+          output[i] *= 3.5;
+        }
+      };
+      
+      brownNoiseProcessor.connect(brownNoiseGain);
+    }
+
+    function stopBrownNoise() {
+      if (brownNoiseProcessor) {
+        brownNoiseProcessor.disconnect();
+      }
+      if (brownNoiseGain) {
+        brownNoiseGain.disconnect();
+      }
+      brownNoiseActive = false;
+    }
+
+    function generatePinkNoise(volume) {
+      initAudio();
+      
+      if (volume === 0) {
+        stopPinkNoise();
+        return;
+      }
+      
+      // If already running, just update volume
+      if (pinkNoiseActive) {
+        pinkNoiseGain.gain.value = volume / 100;
+        return;
+      }
+      
+      pinkNoiseActive = true;
+      pinkNoiseGain = audioContext.createGain();
+      pinkNoiseGain.gain.value = volume / 100;
+      pinkNoiseGain.connect(audioContext.destination);
+      
+      const bufferSize = 4096;
+      const b = [0, 0, 0, 0, 0, 0, 0];
+      pinkNoiseProcessor = audioContext.createScriptProcessor(bufferSize, 1, 1);
+      
+      pinkNoiseProcessor.onaudioprocess = function(event) {
+        const output = event.outputBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          
+          b[0] = 0.049922035 * white + 0.6962606 * b[0] + 0.0166 * b[1];
+          b[1] = 0.013261048 * white + 0.9361448 * b[1] - 0.317 * b[2];
+          b[2] = 0.0027954738 * white + 0.60481516 * b[2] - 0.768 * b[3];
+          b[3] = 0.00390413 * white + 0.7091068 * b[3] - 0.480 * b[4];
+          b[4] = 0.00216916 * white + 0.473259 * b[4] - 0.561 * b[5];
+          b[5] = 0.3104856 * white + 0.01564737 * b[5] - 0.592 * b[6];
+          b[6] = 2.50049 * b[5] - 0.0222 * b[4];
+          
+          output[i] = b[6] * 0.8;
+        }
+      };
+      
+      pinkNoiseProcessor.connect(pinkNoiseGain);
+    }
+
+    function stopPinkNoise() {
+      if (pinkNoiseProcessor) {
+        pinkNoiseProcessor.disconnect();
+      }
+      if (pinkNoiseGain) {
+        pinkNoiseGain.disconnect();
+      }
+      pinkNoiseActive = false;
+    }
+
+    // Timer state
+    let totalSeconds = 15 * 60;
+    let remainingSeconds = totalSeconds;
+    let timerInterval = null;
+    let isRunning = false;
+    let isPaused = false;
+
+    // DOM elements
+    const timeDisplay = document.getElementById('time-display');
+    const timeLabel = document.getElementById('time-label');
+    const progressRing = document.getElementById('progress-ring');
+    const startBtn = document.getElementById('start-btn');
+    const pauseBtn = document.getElementById('pause-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const restartBtn = document.getElementById('restart-btn');
+    const decreaseBtn = document.getElementById('decrease-btn');
+    const increaseBtn = document.getElementById('increase-btn');
+    const timeAdjust = document.getElementById('time-adjust');
+    const runningControls = document.getElementById('running-controls');
+    const completeContainer = document.getElementById('complete-container');
+    const controls = document.getElementById('controls');
+    const hintText = document.getElementById('hint-text');
+    const timerTitle = document.getElementById('timer-title');
+    const completeMessage = document.getElementById('complete-message');
+    
+    // Sound controls
+    const brownBtn = document.getElementById('brown-btn');
+    const pinkBtn = document.getElementById('pink-btn');
+    const brownVolume = document.getElementById('brown-volume');
+    const pinkVolume = document.getElementById('pink-volume');
+    const brownVolDisplay = document.getElementById('brown-vol-display');
+    const pinkVolDisplay = document.getElementById('pink-vol-display');
+
+    const circumference = 2 * Math.PI * 45;
+
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function updateDisplay() {
+      timeDisplay.textContent = formatTime(remainingSeconds);
+      const progress = remainingSeconds / totalSeconds;
+      const offset = circumference * (1 - progress);
+      progressRing.style.strokeDashoffset = offset;
+      
+      if (remainingSeconds >= 60) {
+        timeLabel.textContent = 'minutes';
+      } else {
+        timeLabel.textContent = 'seconds';
+      }
+    }
+
+    function startTimer() {
+      if (remainingSeconds <= 0) return;
+      
+      isRunning = true;
+      isPaused = false;
+      
+      timeAdjust.classList.add('hidden');
+      startBtn.classList.add('hidden');
+      runningControls.classList.remove('hidden');
+      runningControls.classList.add('flex');
+      pauseBtn.textContent = 'Pause';
+      hintText.textContent = 'Breathe in... Breathe out...';
+      
+      timerInterval = setInterval(() => {
+        remainingSeconds--;
+        updateDisplay();
+        
+        if (remainingSeconds <= 0) {
+          completeTimer();
+        }
+      }, 1000);
+    }
+
+    function pauseTimer() {
+      if (isPaused) {
+        isPaused = false;
+        pauseBtn.textContent = 'Pause';
+        hintText.textContent = 'Breathe in... Breathe out...';
+        timerInterval = setInterval(() => {
+          remainingSeconds--;
+          updateDisplay();
+          if (remainingSeconds <= 0) {
+            completeTimer();
+          }
+        }, 1000);
+      } else {
+        isPaused = true;
+        pauseBtn.textContent = 'Resume';
+        hintText.textContent = 'Paused — take your time.';
+        clearInterval(timerInterval);
+      }
+    }
+
+    function resetTimer() {
+      clearInterval(timerInterval);
+      isRunning = false;
+      isPaused = false;
+      remainingSeconds = totalSeconds;
+      
+      updateDisplay();
+      
+      timeAdjust.classList.remove('hidden');
+      startBtn.classList.remove('hidden');
+      runningControls.classList.add('hidden');
+      runningControls.classList.remove('flex');
+      completeContainer.classList.add('hidden');
+      controls.classList.remove('hidden');
+      hintText.classList.remove('hidden');
+      hintText.textContent = 'Find your breath. Find your peace.';
+    }
+
+    function completeTimer() {
+      clearInterval(timerInterval);
+      isRunning = false;
+      
+      controls.classList.add('hidden');
+      hintText.classList.add('hidden');
+      completeContainer.classList.remove('hidden');
+      completeContainer.classList.add('flex', 'flex-col', 'items-center');
+    }
+
+    function adjustTime(delta) {
+      const newTotal = totalSeconds + delta;
+      if (newTotal >= 60 && newTotal <= 3600) {
+        totalSeconds = newTotal;
+        remainingSeconds = newTotal;
+        updateDisplay();
+      }
+    }
+
+    // Sound control event listeners
+    brownBtn.addEventListener('click', () => {
+      const vol = parseInt(brownVolume.value);
+      if (vol > 0) {
+        brownVolume.value = 0;
+        brownVolDisplay.textContent = '0';
+        stopBrownNoise();
+        brownBtn.classList.remove('active');
+      } else {
+        brownVolume.value = 50;
+        brownVolDisplay.textContent = '50';
+        generateBrownNoise(50);
+        brownBtn.classList.add('active');
+      }
+    });
+
+    brownVolume.addEventListener('input', (e) => {
+      const vol = parseInt(e.target.value);
+      brownVolDisplay.textContent = vol;
+      if (vol > 0) {
+        if (!brownNoiseActive) {
+          generateBrownNoise(vol);
+        } else {
+          brownNoiseGain.gain.value = vol / 100;
+        }
+        brownBtn.classList.add('active');
+      } else {
+        stopBrownNoise();
+        brownBtn.classList.remove('active');
+      }
+    });
+
+    pinkBtn.addEventListener('click', () => {
+      const vol = parseInt(pinkVolume.value);
+      if (vol > 0) {
+        pinkVolume.value = 0;
+        pinkVolDisplay.textContent = '0';
+        stopPinkNoise();
+        pinkBtn.classList.remove('active');
+      } else {
+        pinkVolume.value = 50;
+        pinkVolDisplay.textContent = '50';
+        generatePinkNoise(50);
+        pinkBtn.classList.add('active');
+      }
+    });
+
+    pinkVolume.addEventListener('input', (e) => {
+      const vol = parseInt(e.target.value);
+      pinkVolDisplay.textContent = vol;
+      if (vol > 0) {
+        if (!pinkNoiseActive) {
+          generatePinkNoise(vol);
+        } else {
+          pinkNoiseGain.gain.value = vol / 100;
+        }
+        pinkBtn.classList.add('active');
+      } else {
+        stopPinkNoise();
+        pinkBtn.classList.remove('active');
+      }
+    });
+
+    // Timer event listeners
+    startBtn.addEventListener('click', startTimer);
+    pauseBtn.addEventListener('click', pauseTimer);
+    resetBtn.addEventListener('click', resetTimer);
+    restartBtn.addEventListener('click', resetTimer);
+    decreaseBtn.addEventListener('click', () => adjustTime(-300));
+    increaseBtn.addEventListener('click', () => adjustTime(300));
+
+    // SDK initialization
+    async function onConfigChange(config) {
+      const title = config.timer_title || defaultConfig.timer_title;
+      const startText = config.start_text || defaultConfig.start_text;
+      const completeText = config.complete_message || defaultConfig.complete_message;
+      const bgColor = config.background_color || defaultConfig.background_color;
+      const fontFamily = config.font_family || defaultConfig.font_family;
+      const fontSize = config.font_size || defaultConfig.font_size;
+      
+      timerTitle.textContent = title;
+      startBtn.textContent = startText;
+      completeMessage.textContent = completeText;
+      
+      const appWrapper = document.getElementById('app-wrapper');
+      appWrapper.style.background = bgColor;
+      
+      document.body.style.fontFamily = `${fontFamily}, Outfit, sans-serif`;
+      
+      timeDisplay.style.fontSize = `${fontSize * 3.5}px`;
+      timerTitle.style.fontSize = `${fontSize * 1.5}px`;
+    }
+
+    function mapToCapabilities(config) {
+      return {
+        recolorables: [
+          {
+            get: () => config.background_color || defaultConfig.background_color,
+            set: (value) => { config.background_color = value; window.elementSdk.setConfig({ background_color: value }); }
+          },
+          {
+            get: () => config.accent_color || defaultConfig.accent_color,
+            set: (value) => { config.accent_color = value; window.elementSdk.setConfig({ accent_color: value }); }
+          },
+          {
+            get: () => config.text_color || defaultConfig.text_color,
+            set: (value) => { config.text_color = value; window.elementSdk.setConfig({ text_color: value }); }
+          },
+          {
+            get: () => config.button_color || defaultConfig.button_color,
+            set: (value) => { config.button_color = value; window.elementSdk.setConfig({ button_color: value }); }
+          },
+          {
+            get: () => config.surface_color || defaultConfig.surface_color,
+            set: (value) => { config.surface_color = value; window.elementSdk.setConfig({ surface_color: value }); }
+          }
+        ],
+        borderables: [],
+        fontEditable: {
+          get: () => config.font_family || defaultConfig.font_family,
+          set: (value) => { config.font_family = value; window.elementSdk.setConfig({ font_family: value }); }
+        },
+        fontSizeable: {
+          get: () => config.font_size || defaultConfig.font_size,
+          set: (value) => { config.font_size = value; window.elementSdk.setConfig({ font_size: value }); }
+        }
+      };
+    }
+
+    function mapToEditPanelValues(config) {
+      return new Map([
+        ['timer_title', config.timer_title || defaultConfig.timer_title],
+        ['start_text', config.start_text || defaultConfig.start_text],
+        ['complete_message', config.complete_message || defaultConfig.complete_message]
+      ]);
+    }
+
+    updateDisplay();
+    
+    if (window.elementSdk) {
+      window.elementSdk.init({
+        defaultConfig,
+        onConfigChange,
+        mapToCapabilities,
+        mapToEditPanelValues
+      });
+    }
+  </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9cef60be018f41d5',t:'MTc3MTI2OTM3MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
